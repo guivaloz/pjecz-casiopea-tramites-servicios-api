@@ -48,10 +48,8 @@ async def carro(
     if apellido_primero == "":
         return OnePagCarroOut(success=False, message="El primer apellido no es válido")
 
-    # Validar apellido_segundo
+    # Es opcional el apellido_segundo
     apellido_segundo = safe_string(pag_carro_in.apellido_segundo, save_enie=True)
-    if apellido_segundo == "":
-        return OnePagCarroOut(success=False, message="El segundo apellido no es válido")
 
     # Validar curp
     try:
