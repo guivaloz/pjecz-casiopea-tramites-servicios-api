@@ -32,6 +32,9 @@ class Autoridad(Base, UniversalMixin):
     es_jurisdiccional: Mapped[bool] = mapped_column(default=False)
     es_activo: Mapped[bool] = mapped_column(default=True)
 
+    # Hijos
+    pag_pagos: Mapped[list["PagPago"]] = relationship("PagPago", back_populates="autoridad")
+
     @property
     def distrito_clave(self):
         """Clave del distrito"""

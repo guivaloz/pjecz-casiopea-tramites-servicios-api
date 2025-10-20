@@ -14,9 +14,6 @@ class AutoridadOut(BaseModel):
     distrito_clave: str
     distrito_nombre: str
     distrito_nombre_corto: str
-    materia_clave: str
-    materia_nombre: str
-    es_jurisdiccional: bool
     model_config = ConfigDict(from_attributes=True)
 
 

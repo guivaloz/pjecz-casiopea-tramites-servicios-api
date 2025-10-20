@@ -11,9 +11,6 @@ class DistritoOut(BaseModel):
     clave: str
     nombre: str
     nombre_corto: str
-    es_distrito_judicial: bool
-    es_distrito: bool
-    es_jurisdiccional: bool
     model_config = ConfigDict(from_attributes=True)
 
 

@@ -2,13 +2,15 @@
 Pag Pagos, esquemas de pydantic
 """
 
+import uuid
+
 from pydantic import BaseModel, ConfigDict
 
 
 class PagPagoOut(BaseModel):
     """Esquema para entregar pagos"""
 
-    id: str
+    id: uuid.UUID
     autoridad_clave: str
     autoridad_descripcion: str
     distrito_clave: str
@@ -53,7 +55,7 @@ class PagCarroIn(BaseModel):
 class PagCarroOut(BaseModel):
     """Esquema para entregar el carro de compras"""
 
-    id: str
+    id: uuid.UUID
     autoridad_clave: str
     autoridad_descripcion: str
     autoridad_descripcion_corta: str
@@ -84,7 +86,7 @@ class PagResultadoIn(BaseModel):
 class PagResultadoOut(BaseModel):
     """Esquema para entregar un resultado del pago"""
 
-    id: str
+    id: uuid.UUID
     autoridad_clave: str
     autoridad_descripcion: str
     autoridad_descripcion_corta: str

@@ -67,20 +67,17 @@ def safe_email(input_str, search_fragment=False) -> str:
     return final
 
 
-def safe_quincena(input_str) -> str:
-    """Safe quincena"""
-    final = input_str.strip()
-    if re.match(QUINCENA_REGEXP, final) is None:
-        raise ValueError("Quincena invalida")
-    return final
-
-
-def safe_message(input_str, max_len=250, default_output_str="Sin descripción") -> str:
-    """Safe message"""
-    message = str(input_str)
-    if message == "":
-        return default_output_str
-    return (message[:max_len] + "...") if len(message) > max_len else message
+def safe_integer(input_value, min_value=None, max_value=None) -> int:
+    """Safe integer"""
+    try:
+        int_value = int(input_value)
+    except (ValueError, TypeError):
+        return 0
+    if min_value is not None and int_value < min_value:
+        return min_value
+    if max_value is not None and int_value > max_value:
+        return max_value
+    return int_value
 
 
 def safe_rfc(input_str, is_optional=False, search_fragment=False) -> str:

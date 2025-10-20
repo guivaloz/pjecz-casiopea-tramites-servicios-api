@@ -36,7 +36,7 @@ async def detalle(
         return OneAutoridadOut(success=False, message="No está activa esa autoridad")
     if autoridad.estatus != "A":
         return OneAutoridadOut(success=False, message="Esta autoridad está eliminada")
-    return OneAutoridadOut(success=True, message=f"Autoridad {clave}", data=AutoridadOut.model_validate(autoridad))
+    return OneAutoridadOut(success=True, message="Detalle de una autoridad", data=AutoridadOut.model_validate(autoridad))
 
 
 @autoridades.get("", response_model=CustomPage[AutoridadOut])
@@ -45,9 +45,24 @@ async def paginado(
     distrito_clave: str = "",
 ):
     """Paginado de autoridades"""
-    consulta = database.query(Autoridad)
+
+    # Consultar autoridades
+    consulta = database.query(Autoridad).join(Distrito)
+
+    # Filtrar por los distritos donde es_distrito es True
+    consulta = consulta.filter(Distrito.es_distrito == True)
+
+    # Filtrar por distrito_clave si se proporciona
     if distrito_clave:
         distrito_clave = safe_clave(distrito_clave)
         if distrito_clave != "":
-            consulta = consulta.join(Distrito).filter(Distrito.clave == distrito_clave)
-    return paginate(consulta.filter(Autoridad.es_activo == True).filter(Autoridad.estatus == "A").order_by(Autoridad.clave))
+            consulta = consulta.filter(Distrito.clave == distrito_clave)
+
+    # Filtrar por los activos
+    consulta = consulta.filter(Autoridad.es_activo == True)
+
+    # Filtrar por estatus "A"
+    consulta = consulta.filter(Autoridad.estatus == "A")
+
+    # Entregar
+    return paginate(consulta.order_by(Autoridad.clave))

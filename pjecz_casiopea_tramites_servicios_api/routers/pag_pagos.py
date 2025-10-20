@@ -9,9 +9,16 @@ import nest_asyncio
 from fastapi import APIRouter, Depends
 from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 
+from ..config.settings import Settings, get_settings
 from ..dependencies.database import Session, get_db
 from ..dependencies.safe_string import safe_clave, safe_curp, safe_email, safe_integer, safe_string, safe_telefono
-from ..dependencies.santander_web_pay_plus import SantanderWebPayPlusAnyError, create_pay_link
+from ..dependencies.santander_web_pay_plus import (
+    RESPUESTA_EXITO,
+    SantanderWebPayPlusAnyError,
+    convert_xml_to_dict,
+    create_pay_link,
+    decrypt_chain,
+)
 from ..models.autoridades import Autoridad
 from ..models.cit_clientes import CitCliente
 from ..models.distritos import Distrito
@@ -120,7 +127,7 @@ async def carro(
         distrito = autoridad.distrito
 
     # Validar la cantidad
-    cantidad = safe_integer(pag_carro_in.cantidad, default=1)  # Valor por defecto 1
+    cantidad = safe_integer(pag_carro_in.cantidad, min_value=1, max_value=100)
 
     # Validar la descripción
     descripcion = safe_string(pag_carro_in.descripcion, save_enie=True)
@@ -234,9 +241,64 @@ async def carro(
 @pag_pagos.post("/resultado", response_model=OnePagResultadoOut)
 async def resultado(
     database: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
     pag_resultado_in: PagResultadoIn,
 ):
-    """Recibir, procesar y entregar datos del resultado de pagos"""
+    """Actualizar un pago, ahora puede guadar el contenido XML del banco"""
+
+    # Validar el XML que mando el banco
+    if pag_resultado_in.xml_encriptado.strip() == "":
+        return OnePagResultadoOut(success=False, message="El XML está vacío")
+
+    # Desencriptar el XML que mando el banco
+    try:
+        respuesta_xml = decrypt_chain(pag_resultado_in.xml_encriptado)
+        respuesta = convert_xml_to_dict(respuesta_xml)
+    except SantanderWebPayPlusAnyError as error:
+        return OnePagResultadoOut(success=False, message=f"No se pudo procesar el XML: {error}")
+
+    # Consultar el pago
+    pag_pago_id = int(respuesta["pago_id"])
+    pag_pago = database.query(PagPago).get(pag_pago_id)
+
+    # Validar el pago
+    if pag_pago is None:
+        return OnePagResultadoOut(success=False, message="No existe ese pago")
+    if pag_pago.estatus != "A":
+        return OnePagResultadoOut(success=False, message="No es activo ese pago, está eliminado")
+    if pag_pago.estado != "SOLICITADO":
+        return OnePagResultadoOut(success=False, message="No es un pago solicitado al banco, ya fue procesado")
+
+    # Definir el estado, puede ser PAGADO o FALLIDO
+    estado = "PAGADO" if respuesta["respuesta"] == RESPUESTA_EXITO else "FALLIDO"
+    if estado not in PagPago.ESTADOS:
+        return OnePagResultadoOut(success=False, message="El estado no es válido")
+
+    # Actualizar el pago
+    pag_pago.estado = estado
+    pag_pago.folio = respuesta["folio"]
+    pag_pago.resultado_tiempo = datetime.now(tz=settings.TZ)
+    pag_pago.resultado_xml = respuesta_xml
+    database.add(pag_pago)
+    database.commit()
+    # database.refresh(pag_pago)
+
+    # Entregar
+    return PagResultadoOut(
+        id=pag_pago.id,
+        autoridad_clave=pag_pago.autoridad.clave,
+        autoridad_descripcion=pag_pago.autoridad.descripcion,
+        autoridad_descripcion_corta=pag_pago.autoridad.descripcion_corta,
+        cantidad=pag_pago.cantidad,
+        nombres=pag_pago.cit_cliente.nombres,
+        apellido_primero=pag_pago.cit_cliente.apellido_primero,
+        apellido_segundo=pag_pago.cit_cliente.apellido_segundo,
+        email=pag_pago.email,
+        estado=pag_pago.estado,
+        folio=pag_pago.folio,
+        resultado_tiempo=pag_pago.resultado_tiempo,
+        total=pag_pago.total,
+    )
 
 
 @pag_pagos.get("/{pag_pago_id}", response_model=OnePagPagoOut)
@@ -245,3 +307,20 @@ async def detalle_pag_pago(
     pag_pago_id: str,
 ):
     """Detalle de un pago a partir de su UUID"""
+
+    # Validar el UUID
+    try:
+        pag_pago_id = safe_clave(pag_pago_id)
+    except ValueError:
+        return OnePagPagoOut(success=False, message="El ID no es válido")
+
+    # Consultar el pago
+    try:
+        pag_pago = database.query(PagPago).filter_by(id=pag_pago_id).one()
+    except (MultipleResultsFound, NoResultFound):
+        return OnePagPagoOut(success=False, message="No existe ese pago")
+    if pag_pago.estatus != "A":
+        return OnePagPagoOut(success=False, message="No es activo ese pago, está eliminado")
+
+    # Entregar
+    return OnePagPagoOut(success=True, message="Detalle de un pago", data=PagPagoOut.model_validate(pag_pago))

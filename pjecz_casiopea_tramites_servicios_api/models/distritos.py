@@ -33,6 +33,7 @@ class Distrito(Base, UniversalMixin):
 
     # Hijos
     autoridades: Mapped[List["Autoridad"]] = relationship("Autoridad", back_populates="distrito")
+    pag_pagos: Mapped[list["PagPago"]] = relationship("PagPago", back_populates="distrito")
 
     def __repr__(self):
         """Representación"""

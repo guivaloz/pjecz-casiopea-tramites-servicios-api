@@ -35,7 +35,7 @@ async def detalle(
         return OneDistritoOut(success=False, message="No está activo ese distrito")
     if distrito.estatus != "A":
         return OneDistritoOut(success=False, message="Este distrito está eliminado")
-    return OneDistritoOut(success=True, message=f"Detalle de {clave}", data=DistritoOut.model_validate(distrito))
+    return OneDistritoOut(success=True, message="Detalle de un distrito", data=DistritoOut.model_validate(distrito))
 
 
 @distritos.get("", response_model=CustomPage[DistritoOut])
@@ -43,4 +43,18 @@ async def paginado(
     database: Annotated[Session, Depends(get_db)],
 ):
     """Paginado de distritos"""
-    return paginate(database.query(Distrito).filter_by(es_activo=True).filter_by(estatus="A").order_by(Distrito.clave))
+
+    # Consultar distritos
+    consulta = database.query(Distrito)
+
+    # Filtrar por es_distrito True
+    consulta = consulta.filter_by(es_distrito=True)
+
+    # Filtrar por los activos
+    consulta = consulta.filter_by(es_activo=True)
+
+    # Filtrar por estatus "A"
+    consulta = consulta.filter_by(estatus="A")
+
+    # Entregar
+    return paginate(consulta.order_by(Distrito.clave))
