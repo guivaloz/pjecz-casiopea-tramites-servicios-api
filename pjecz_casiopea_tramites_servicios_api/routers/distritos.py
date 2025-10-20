@@ -23,18 +23,26 @@ async def detalle(
     clave: str,
 ):
     """Detalle de un distrito a partir de su clave"""
+
+    # Validar clave
     try:
         clave = safe_clave(clave)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No es válida la clave")
+
+    # Consultar distrito
     try:
         distrito = database.query(Distrito).filter_by(clave=clave).one()
     except (MultipleResultsFound, NoResultFound):
         return OneDistritoOut(success=False, message="No existe ese distrito")
+
+    # Validar que esté activo y no eliminada
     if distrito.es_activo is False:
         return OneDistritoOut(success=False, message="No está activo ese distrito")
     if distrito.estatus != "A":
         return OneDistritoOut(success=False, message="Este distrito está eliminado")
+
+    # Entregar
     return OneDistritoOut(success=True, message="Detalle de un distrito", data=DistritoOut.model_validate(distrito))
 
 
@@ -50,10 +58,8 @@ async def paginado(
     # Filtrar por es_distrito True
     consulta = consulta.filter_by(es_distrito=True)
 
-    # Filtrar por los activos
+    # Filtrar por los activos y por estatus "A"
     consulta = consulta.filter_by(es_activo=True)
-
-    # Filtrar por estatus "A"
     consulta = consulta.filter_by(estatus="A")
 
     # Entregar

@@ -24,18 +24,26 @@ async def detalle(
     clave: str,
 ):
     """Detalle de una autoridad a partir de su clave"""
+
+    # Validar clave
     try:
         clave = safe_clave(clave)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No es válida la clave")
+
+    # Consultar autoridad
     try:
         autoridad = database.query(Autoridad).filter_by(clave=clave).one()
     except (MultipleResultsFound, NoResultFound):
         return OneAutoridadOut(success=False, message="No existe esa autoridad")
+
+    # Validar que esté activa y no eliminada
     if autoridad.es_activo is False:
         return OneAutoridadOut(success=False, message="No está activa esa autoridad")
     if autoridad.estatus != "A":
         return OneAutoridadOut(success=False, message="Esta autoridad está eliminada")
+
+    # Entregar
     return OneAutoridadOut(success=True, message="Detalle de una autoridad", data=AutoridadOut.model_validate(autoridad))
 
 
@@ -58,10 +66,8 @@ async def paginado(
         if distrito_clave != "":
             consulta = consulta.filter(Distrito.clave == distrito_clave)
 
-    # Filtrar por los activos
+    # Filtrar por los activos y por estatus "A"
     consulta = consulta.filter(Autoridad.es_activo == True)
-
-    # Filtrar por estatus "A"
     consulta = consulta.filter(Autoridad.estatus == "A")
 
     # Entregar

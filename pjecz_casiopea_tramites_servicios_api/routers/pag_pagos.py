@@ -180,8 +180,8 @@ async def carro(
                 limite_citas_pendientes=3,
             )
             database.add(cit_cliente)
-            database.commit()
-            database.refresh(cit_cliente)
+            # database.commit()
+            # database.refresh(cit_cliente)
         except Exception:
             database.rollback()
             return OnePagCarroOut(success=False, message="No se pudo crear el cliente")
@@ -194,7 +194,7 @@ async def carro(
         autoridad=autoridad,
         distrito=distrito,
         cit_cliente=cit_cliente,
-        pag_tramite_servicio=pag_tramite_servicio,
+        pag_tramite_servicio_id=pag_tramite_servicio.id,
         caducidad=caducidad.date(),
         cantidad=cantidad,
         descripcion=descripcion,
@@ -220,7 +220,7 @@ async def carro(
     except SantanderWebPayPlusAnyError as error:
         return OnePagCarroOut(success=False, message=f"No se pudo crear el enlace de pago: {error}")
 
-    # Entregar
+    # Definir el data de salida
     pag_carro_out = PagCarroOut(
         id=pag_pago.id,
         autoridad_clave=autoridad.clave,
@@ -235,7 +235,9 @@ async def carro(
         total=total,
         url=url,
     )
-    return OnePagCarroOut(success=True, message="Carro de compras creado", data=pag_carro_out)
+
+    # Entregar
+    return OnePagCarroOut(success=True, message="Pago creado listo para enviar al banco", data=pag_carro_out)
 
 
 @pag_pagos.post("/resultado", response_model=OnePagResultadoOut)
@@ -283,8 +285,8 @@ async def resultado(
     database.commit()
     # database.refresh(pag_pago)
 
-    # Entregar
-    return PagResultadoOut(
+    # Definir el data de salida
+    pag_resultado_out = PagResultadoOut(
         id=pag_pago.id,
         autoridad_clave=pag_pago.autoridad.clave,
         autoridad_descripcion=pag_pago.autoridad.descripcion,
@@ -300,9 +302,12 @@ async def resultado(
         total=pag_pago.total,
     )
 
+    # Entregar
+    return OnePagResultadoOut(success=True, message="Pago actualizado con información del banco", data=pag_resultado_out)
+
 
 @pag_pagos.get("/{pag_pago_id}", response_model=OnePagPagoOut)
-async def detalle_pag_pago(
+async def detalle(
     database: Annotated[Session, Depends(get_db)],
     pag_pago_id: str,
 ):

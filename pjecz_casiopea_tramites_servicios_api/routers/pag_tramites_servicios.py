@@ -23,18 +23,26 @@ async def detalle(
     clave: str,
 ):
     """Detalle de un Trámite o Servicio a partir de su clave"""
+
+    # Validar clave
     try:
         clave = safe_clave(clave)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No es válida la clave")
+
+    # Consultar trámite o servicio
     try:
         pag_tramite_servicio = database.query(PagTramiteServicio).filter_by(clave=clave).one()
     except (MultipleResultsFound, NoResultFound):
         return OnePagTramiteServicioOut(success=False, message="No existe ese trámite o servicio")
+
+    # Validar que esté activo y no eliminado
     if pag_tramite_servicio.es_activo is False:
         return OnePagTramiteServicioOut(success=False, message="No está activo ese trámite o servicio")
     if pag_tramite_servicio.estatus != "A":
         return OnePagTramiteServicioOut(success=False, message="Ese trámite o servicio está eliminado")
+
+    # Entregar
     return OnePagTramiteServicioOut(
         success=True,
         message="Detalle de un trámite o servicio",
@@ -51,10 +59,8 @@ async def paginado(
     # Consultar
     consulta = database.query(PagTramiteServicio)
 
-    # Filtrar por es_activo True
+    # Filtrar por es_activo True y por estatus "A"
     consulta = consulta.filter_by(es_activo=True)
-
-    # Filtrar por estatus "A"
     consulta = consulta.filter_by(estatus="A")
 
     # Entregar

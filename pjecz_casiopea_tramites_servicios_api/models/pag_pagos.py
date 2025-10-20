@@ -47,7 +47,7 @@ class PagPago(Base, UniversalMixin):
     descripcion: Mapped[str] = mapped_column(String(256), default="")
     estado: Mapped[str] = mapped_column(Enum(*ESTADOS, name="pag_pagos_estados", native_enum=False), index=True)
     email: Mapped[str] = mapped_column(String(256))
-    folio: Mapped[str] = mapped_column(String(256))
+    folio: Mapped[str] = mapped_column(String(256), default="")
     resultado_tiempo: Mapped[Optional[datetime]]
     resultado_xml: Mapped[Optional[str]] = mapped_column(Text)
     total: Mapped[Numeric] = mapped_column(Numeric(precision=8, scale=2, decimal_return_scale=2))

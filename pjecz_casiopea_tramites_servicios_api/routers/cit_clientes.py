@@ -21,14 +21,22 @@ async def detalle(
     email: str,
 ):
     """Detalle de un cit_cliente a partir de su email"""
+
+    # Validar email
     try:
         email = safe_email(email, search_fragment=False)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No es válido el email")
+
+    # Consultar cit_cliente
     try:
         cit_cliente = database.query(CitCliente).filter_by(email=email).one()
     except (MultipleResultsFound, NoResultFound):
         return OneCitClienteOut(success=False, message="No existe ese cliente")
+
+    # Validar que no esté eliminado
     if cit_cliente.estatus != "A":
         return OneCitClienteOut(success=False, message="Este cliente está eliminado")
+
+    # Entregar
     return OneCitClienteOut(success=True, message="Detalle de un cliente", data=CitClienteOut.model_validate(cit_cliente))
